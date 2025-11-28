@@ -8,7 +8,6 @@ try:
     from tabulate import tabulate
 except Exception:
     def tabulate(x, headers=None, tablefmt=None):
-        # fallback very simple
         out = ""
         if headers:
             out += " | ".join(headers) + "\n"
@@ -25,7 +24,6 @@ try:
         print(colored(f.renderText("FARMTECH"), "yellow"))
 except Exception:
     def show_banner():
-        # simple fallback
         print("\n=== FARMTECH ===\n")
 
 def clear_screen():
@@ -152,7 +150,6 @@ def list_supplier(cur):
 from termcolor import colored
 
 def laporan_penjualan(cur):
-    # Input periode
     print("\n=== LAPORAN PENJUALAN ===")
     tahun = input("Masukkan tahun (default tahun ini): ").strip()
     bulan = input("Masukkan bulan (1–12, default bulan ini): ").strip()
@@ -160,14 +157,12 @@ def laporan_penjualan(cur):
     tahun = int(tahun) if tahun else datetime.now().year
     bulan = int(bulan) if bulan else datetime.now().month
 
-    # Range bulan
     start = date(tahun, bulan, 1)
     if bulan == 12:
         end = date(tahun + 1, 1, 1)
     else:
         end = date(tahun, bulan + 1, 1)
 
-    # Query
     cur.execute("""
         SELECT tp.penjualan_id, tp.tanggal_transaksi, tp.total_harga, m.nama
         FROM penjualan tp
@@ -185,7 +180,6 @@ def laporan_penjualan(cur):
         print(colored("Tidak ada transaksi pada periode ini.", "yellow"))
         return
 
-    # Format tampilan
     tabel = []
     for r in rows:
         tanggal = r[1].strftime("%d-%m-%Y %H:%M")
@@ -215,7 +209,6 @@ def laporan_analisis(cur):
     start = date(tahun, bulan, 1)
     end = date(tahun + 1, 1, 1) if bulan == 12 else date(tahun, bulan + 1, 1)
 
-    # Query total penjualan
     cur.execute("""
         SELECT COALESCE(SUM(total_harga), 0)
         FROM penjualan
@@ -224,7 +217,6 @@ def laporan_analisis(cur):
     """, (start, end))
     total_penjualan = cur.fetchone()[0]
 
-    # Query total pembelian
     cur.execute("""
         SELECT COALESCE(SUM(total_pembelian), 0)
         FROM pembelian
@@ -262,7 +254,6 @@ def transaksi_penjualan(conn, cur, pegawai):
             if input("Member tidak ditemukan. Daftar sekarang? (y/n): ").lower() == "y":
                 member_id = add_member(conn, cur)
 
-    # build cart
     cart = []
     while True:
         list_produk(cur)
@@ -298,7 +289,7 @@ def transaksi_penjualan(conn, cur, pegawai):
     print(tabulate(table, headers=["ID","Produk","Harga","Qty","Subtotal"], tablefmt="grid"))
 
     ppn = int(subtotal * PPN_RATE)
-    # discount for member: every 10th transaction get 10% (as discussed)
+    # discount untuk member : setiap kelipatan 10 transaksi mendapatkan discount 10%
     diskon_rate = 0.0
     if member_id:
         cur.execute("SELECT total_transaksi FROM member WHERE member_id = %s", (member_id,))
@@ -315,14 +306,12 @@ def transaksi_penjualan(conn, cur, pegawai):
         print("Transaksi dibatalkan.")
         return
 
-    # insert header
     cur.execute("""
         INSERT INTO penjualan (kasir_id, member_id, tanggal_transaksi, subtotal, ppn, diskon, total_harga)
         VALUES (%s,%s,NOW(),%s,%s,%s,%s) RETURNING penjualan_id
     """, (pegawai["pegawai_id"], member_id, subtotal, ppn, diskon, total))
     penjualan_id = cur.fetchone()[0]
 
-    # insert details and update stok
     for it in cart:
         cur.execute("""
             INSERT INTO detail_penjualan (penjualan_id, produk_id, qty, harga_saat_penjualan)
@@ -344,7 +333,6 @@ def restock_pembelian(conn, cur):
     if sid is None:
         print("Batal.")
         return
-    # check supplier exists
     cur.execute("SELECT supplier_id FROM supplier WHERE supplier_id = %s", (sid,))
     if cur.fetchone() is None:
         print("Supplier tidak ditemukan.")
@@ -391,7 +379,6 @@ def restock_pembelian(conn, cur):
 def input_servis(conn, cur, pegawai):
     print("\n=== INPUT SERVIS BARU ===")
 
-    # --- Member ---
     member_id = None
     if input("Pelanggan member? (y/n): ").lower() == "y":
         phone = input("No HP member: ").strip()
@@ -403,7 +390,6 @@ def input_servis(conn, cur, pegawai):
             if input("Member tidak ditemukan. Daftar baru? (y/n): ").lower() == "y":
                 member_id = add_member(conn, cur)
 
-    # --- Pilih Teknisi ---
     cur.execute("SELECT teknisi_id, nama, no_hp FROM teknisi ORDER BY teknisi_id")
     techs = cur.fetchall()
     if not techs:
@@ -416,7 +402,6 @@ def input_servis(conn, cur, pegawai):
         print("Teknisi tidak valid.")
         return
 
-    # --- Detail Servis ---
     nama_alat = input("Nama alat/mesin: ").strip()
     keluhan = input("Keluhan kerusakan: ").strip()
 
@@ -453,7 +438,6 @@ def update_status_servis(conn, cur):
 
     status = row[0]
 
-    # PROSES → SELESAI
     if status == "Proses":
         print("Status saat ini: PROSES")
         print("Perubahan → SELESAI")
@@ -474,7 +458,6 @@ def update_status_servis(conn, cur):
         conn.commit()
         print("Status diubah menjadi SELESAI + biaya tersimpan.")
 
-    # SELESAI → DIAMBIL
     elif status == "Selesai":
         print("Status saat ini: SELESAI")
         print("Perubahan → DIAMBIL")
@@ -488,7 +471,6 @@ def update_status_servis(conn, cur):
         conn.commit()
         print("Servis ditandai sebagai DIAMBIL.")
 
-    # DIAMBIL → tidak bisa diubah
     else:
         print("Servis sudah DIAMBIL dan tidak dapat diubah lagi.")
 
