@@ -153,6 +153,11 @@ ALTER TABLE barang_tidak_laku
 ADD CONSTRAINT fk_btl_produk
 FOREIGN KEY (produk_id) REFERENCES produk(produk_id);
 
+--Perubahan
+ALTER TABLE servis
+ALTER COLUMN biaya_servis DROP NOT NULL;
+
+
 --build Database
 INSERT INTO role (role_name) VALUES
 ('Owner'),
@@ -295,9 +300,3 @@ INSERT INTO barang_tidak_laku (produk_id, terakhir_terjual, diskon_otomatis) VAL
 (12, CURRENT_DATE - 200, 20),
 (23, CURRENT_DATE - 180, 20),
 (10, CURRENT_DATE - 160, 20);
-
---Prubahan
-ALTER TABLE servis
-ALTER COLUMN biaya_servis DROP NOT NULL;
-
-select * from servis
