@@ -157,7 +157,6 @@ FOREIGN KEY (produk_id) REFERENCES produk(produk_id);
 ALTER TABLE servis
 ALTER COLUMN biaya_servis DROP NOT NULL;
 
-
 --build Database
 INSERT INTO role (role_name) VALUES
 ('Owner'),
@@ -300,3 +299,20 @@ INSERT INTO barang_tidak_laku (produk_id, terakhir_terjual, diskon_otomatis) VAL
 (12, CURRENT_DATE - 200, 20),
 (23, CURRENT_DATE - 180, 20),
 (10, CURRENT_DATE - 160, 20);
+
+
+--Perubahan Colom Baru
+ALTER TABLE produk
+ADD COLUMN harga_beli INT DEFAULT 0;
+
+UPDATE produk p
+SET harga_beli = dp.harga_beli
+FROM detail_pembelian dp
+WHERE p.produk_id = dp.produk_id;
+
+UPDATE produk
+SET harga_beli = harga * 0.8
+WHERE harga_beli = 0 OR harga_beli IS NULL;
+
+ALTER TABLE produk
+ALTER COLUMN harga_beli SET NOT NULL;
