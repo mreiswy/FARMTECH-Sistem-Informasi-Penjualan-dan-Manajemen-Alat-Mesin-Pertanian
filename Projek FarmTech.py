@@ -37,7 +37,7 @@ def clear_screen():
 DB_HOST = "localhost"
 DB_NAME = "FarmTechFix"
 DB_USER = "postgres"
-DB_PASS = "UBAH PW KALIAN"
+DB_PASS = "190727"
 DB_PORT = 5432
 
 def connect_db():
@@ -1117,6 +1117,7 @@ def tambah_produk(conn, cur):
     kategori = input("Kategori: ").strip()
     harga = input_int("Harga jual: ")
     stok = input_int("Stok awal: ")
+    harga_beli = input_int("Harga beli: ")
 
     if not nama:
         print("Nama produk wajib diisi.")
@@ -1126,6 +1127,12 @@ def tambah_produk(conn, cur):
         return
     if stok is None or stok < 0:
         print("Stok tidak valid.")
+        return
+    if harga_beli is None or harga_beli <= 0:
+        print("Harga beli tidak valid.")
+        return
+    if harga < harga_beli:
+        print("Harga jual tidak boleh lebih rendah dari harga beli!")
         return
 
     # Pilih supplier
@@ -1144,9 +1151,9 @@ def tambah_produk(conn, cur):
 
     try:
         cur.execute("""
-            INSERT INTO produk (supplier_id, nama_produk, kategori, harga, stok, tanggal_input)
-            VALUES (%s, %s, %s, %s, %s, CURRENT_DATE)
-        """, (supplier_id, nama, kategori, harga, stok))
+            INSERT INTO produk (supplier_id, nama_produk, kategori, harga, harga_beli, stok, tanggal_input)
+VALUES (%s, %s, %s, %s, %s, %s, CURRENT_DATE)
+        """, (supplier_id, nama, kategori, harga, harga_beli, stok))
 
         conn.commit()
         print("Produk berhasil ditambahkan.")
@@ -1166,8 +1173,9 @@ def ubah_produk(conn, cur):
         print("ID tidak valid.")
         return
 
+    # Ambil data lama termasuk harga_beli
     cur.execute("""
-        SELECT nama_produk, kategori, harga, stok, supplier_id
+        SELECT nama_produk, kategori, harga, harga_beli, stok, supplier_id
         FROM produk
         WHERE produk_id = %s
     """, (produk_id,))
@@ -1177,13 +1185,32 @@ def ubah_produk(conn, cur):
         print("Produk tidak ditemukan.")
         return
 
-    nama_lama, kategori_lama, harga_lama, stok_lama, supplier_lama = old
+    nama_lama, kategori_lama, harga_lama, harga_beli_lama, stok_lama, supplier_lama = old
 
     print("\nKosongkan jika ingin tetap.")
     nama_baru = input(f"Nama ({nama_lama}): ").strip()
     kategori_baru = input(f"Kategori ({kategori_lama}): ").strip()
-    harga_baru = input_int(f"Harga ({harga_lama}): ", default=harga_lama)
+
+    harga_baru = input_int(f"Harga jual ({harga_lama}): ", default=harga_lama)
+    harga_beli_baru = input_int(f"Harga beli ({harga_beli_lama}): ", default=harga_beli_lama)
     stok_baru = input_int(f"Stok ({stok_lama}): ", default=stok_lama)
+
+    # === Validasi harga wajib bernilai positif ===
+    if harga_baru is None or harga_baru <= 0:
+        print("Harga jual tidak valid.")
+        return
+
+    if harga_beli_baru is None or harga_beli_baru <= 0:
+        print("Harga beli tidak valid.")
+        return
+    
+    if harga_baru < harga_beli_baru:
+        print("Harga jual tidak boleh lebih rendah dari harga beli!")
+        return
+
+    if stok_baru is None or stok_baru < 0:
+        print("Stok tidak valid.")
+        return
 
     # Supplier tetap atau ganti?
     print("\nSupplier sekarang:", supplier_lama)
@@ -1199,6 +1226,7 @@ def ubah_produk(conn, cur):
     else:
         supplier_baru = supplier_lama
 
+    # Kosong = tetap
     if nama_baru == "":
         nama_baru = nama_lama
     if kategori_baru == "":
@@ -1210,10 +1238,11 @@ def ubah_produk(conn, cur):
             SET nama_produk = %s,
                 kategori = %s,
                 harga = %s,
+                harga_beli = %s,
                 stok = %s,
                 supplier_id = %s
             WHERE produk_id = %s
-        """, (nama_baru, kategori_baru, harga_baru, stok_baru, supplier_baru, produk_id))
+        """, (nama_baru, kategori_baru, harga_baru, harga_beli_baru, stok_baru, supplier_baru, produk_id))
 
         conn.commit()
         print("Produk berhasil diperbarui.")
@@ -1653,29 +1682,76 @@ def restock_pembelian(conn, cur):
     if sid is None:
         print("Batal.")
         return
-    # check supplier exists
+
+    # Validasi supplier
     cur.execute("SELECT supplier_id FROM supplier WHERE supplier_id = %s", (sid,))
     if cur.fetchone() is None:
         print("Supplier tidak ditemukan.")
         return
 
     items = []
+
     while True:
         list_produk(cur)
         pid = input_int("ID produk (enter batal): ")
         if pid is None:
             break
-        cur.execute("SELECT produk_id, nama_produk, harga FROM produk WHERE produk_id = %s", (pid,))
+
+        # Ambil data produk
+        cur.execute("SELECT produk_id, nama_produk, harga, harga_beli FROM produk WHERE produk_id = %s", (pid,))
         p = cur.fetchone()
         if not p:
             print("Produk tidak ada.")
             continue
+
+        produk_id, nama_produk, harga_jual, harga_beli_lama = p
+
         qty = input_int("Jumlah beli: ")
         if qty is None or qty <= 0:
             print("Jumlah tidak valid.")
             continue
-        harga_beli = input_int(f"Harga beli per unit (default {p[2]}): ", default=p[2])
-        items.append((pid, qty, harga_beli))
+
+        # Input harga beli baru
+        harga_beli_baru = input_int(f"Harga beli per unit (default {harga_beli_lama}): ", default=harga_beli_lama)
+
+        # Validasi harga jual >= harga beli
+        # Harga beli wajib positif
+        if harga_beli_baru is None or harga_beli_baru <= 0:
+            print("Harga beli tidak valid.")
+            continue
+
+        # Jika harga beli lebih tinggi dari harga jual → bukan batal, tapi pembeli harus menaikkan harga jual
+        if harga_beli_baru > harga_jual:
+            print("\n Harga beli BARU lebih tinggi dari harga jual saat ini!")
+            print(f"- Harga jual saat ini : {harga_jual}")
+            print(f"- Harga beli baru    : {harga_beli_baru}")
+
+            konfirm = input("Naikkan harga jual agar tidak rugi? (y/n): ").lower()
+            if konfirm == "y":
+                harga_jual_baru = input_int("Masukkan harga jual baru: ")
+                if harga_jual_baru is None or harga_jual_baru <= 0:
+                    print("Harga jual tidak valid. Item dibatalkan.")
+                    continue
+
+                if harga_jual_baru < harga_beli_baru:
+                    print("Harga jual tidak boleh lebih rendah dari harga beli! Item dibatalkan.")
+                    continue
+
+                # Update harga jual produk
+                cur.execute("""
+                    UPDATE produk 
+                    SET harga = %s
+                    WHERE produk_id = %s
+                    """, (harga_jual_baru, produk_id))
+
+                harga_jual = harga_jual_baru  # update variabel untuk dipakai
+            else:
+                print("Item dibatalkan.")
+                continue
+
+        # Simpan ke data keranjang pembelian
+        items.append((pid, qty, harga_beli_baru))
+
         if input("Tambah barang lagi? (y/n): ").lower() != "y":
             break
 
@@ -1683,15 +1759,35 @@ def restock_pembelian(conn, cur):
         print("Tidak ada item. Batal.")
         return
 
-    total = sum(q*h for (_,q,h) in items)
-    cur.execute("INSERT INTO pembelian (supplier_id, tanggal_pembelian, total_pembelian) VALUES (%s, NOW(), %s) RETURNING pembelian_id",
-                (sid, total))
+    # Hitung total pembelian
+    total = sum(q * h for (_, q, h) in items)
+
+    #  Insert header pembelian
+    cur.execute("""
+        INSERT INTO pembelian (supplier_id, tanggal_pembelian, total_pembelian)
+        VALUES (%s, NOW(), %s) RETURNING pembelian_id
+    """, (sid, total))
     pembelian_id = cur.fetchone()[0]
-    for pid, qty, harga_beli in items:
-        cur.execute("INSERT INTO detail_pembelian (pembelian_id, produk_id, qty, harga_beli) VALUES (%s,%s,%s,%s)",
-                    (pembelian_id, pid, qty, harga_beli))
-        cur.execute("UPDATE produk SET stok = stok + %s WHERE produk_id = %s", (qty, pid))
+
+    # insert per item + update stok + update harga beli produk
+    for pid, qty, harga_beli_baru in items:
+
+        # detail pembelian
+        cur.execute("""
+            INSERT INTO detail_pembelian (pembelian_id, produk_id, qty, harga_beli)
+            VALUES (%s, %s, %s, %s)
+        """, (pembelian_id, pid, qty, harga_beli_baru))
+
+        # update stok
+        cur.execute("""
+            UPDATE produk 
+            SET stok = stok + %s,
+                harga_beli = %s   -- update harga beli terbaru
+            WHERE produk_id = %s
+        """, (qty, harga_beli_baru, pid))
+
     conn.commit()
+
     print(f"Pembelian tersimpan (ID = {pembelian_id}), Total = {format_rp(total)}")
 
 # -------------------------
@@ -2271,3 +2367,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+#---FINISHHHH
