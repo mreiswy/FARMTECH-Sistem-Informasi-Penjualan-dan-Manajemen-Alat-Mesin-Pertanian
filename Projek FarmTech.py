@@ -37,7 +37,7 @@ def clear_screen():
 DB_HOST = "localhost"
 DB_NAME = "FarmTechFix"
 DB_USER = "postgres"
-DB_PASS = "190727"
+DB_PASS = "UBAH PW KALIAN"
 DB_PORT = 5432
 
 def connect_db():
