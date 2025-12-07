@@ -157,6 +157,9 @@ FOREIGN KEY (produk_id) REFERENCES produk(produk_id);
 ALTER TABLE servis
 ALTER COLUMN biaya_servis DROP NOT NULL;
 
+ALTER TABLE barang_tidak_laku
+ADD CONSTRAINT unique_produk_id UNIQUE (produk_id);
+
 --build Database
 INSERT INTO role (role_name) VALUES
 ('Owner'),
