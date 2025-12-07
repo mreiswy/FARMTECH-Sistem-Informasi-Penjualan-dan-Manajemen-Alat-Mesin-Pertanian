@@ -2239,8 +2239,8 @@ def menu_admin(conn, cur, user):
         show_banner()
         print("\n=== MENU ADMIN ===")
         print("1. Manajemen Data Diri")
-        print("2. Kelola Kasir")
-        print("3. Kelola Teknisi")
+        print("2. Manajemen Kasir")
+        print("3. Manajemen Teknisi")
         print("4. Kelola Produk")
         print("5. Kelola Supplier")
         print("6. Laporan Stok Produk")
@@ -2263,10 +2263,11 @@ def menu_admin(conn, cur, user):
             kelola_produk(conn, cur, user)
 
         elif c == "5":
-            kelola_supplier(conn, cur, user)
+            kelola_supplier(conn, cur)
         
         elif c == "6":
             laporan_stok_produk(cur)
+            pause()
 
         elif c == "7":
             restock_pembelian(conn, cur)
@@ -2367,4 +2368,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-#---FINISHHHH
