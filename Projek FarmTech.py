@@ -37,7 +37,7 @@ def clear_screen():
 DB_HOST = "localhost"
 DB_NAME = "FarmTechFix"
 DB_USER = "postgres"
-DB_PASS = "Sesuaikan"
+DB_PASS = "190727"
 DB_PORT = 5432
 
 def connect_db():
@@ -1793,6 +1793,51 @@ def restock_pembelian(conn, cur):
 # -------------------------
 # Servis
 # -------------------------
+def list_servis_belum_selesai(cur):
+    """
+    Menampilkan daftar servis yang masih PROSES atau SELESAI (belum diambil).
+    """
+    cur.execute("""
+        SELECT 
+            s.servis_id,
+            COALESCE(m.nama, '-'),
+            s.nama_alat,
+            t.nama AS teknisi,
+            s.status_servis,
+            s.tanggal_masuk
+        FROM servis s
+        LEFT JOIN member m ON m.member_id = s.member_id
+        LEFT JOIN teknisi t ON t.teknisi_id = s.teknisi_id
+        WHERE s.status_servis IN ('Proses', 'Selesai')
+        ORDER BY s.servis_id;
+    """)
+
+    rows = cur.fetchall()
+
+    if not rows:
+        print("Tidak ada servis yang masih PROSES atau SELESAI.")
+        return []
+
+    tabel = []
+    for r in rows:
+        tabel.append([
+            r[0],                      # ID servis
+            r[1],                      # Nama member
+            r[2],                      # Nama alat
+            r[3],                      # Teknisi
+            r[4],                      # Status
+            r[5].strftime("%d-%m-%Y")  # Tanggal masuk
+        ])
+
+    print("\n=== DAFTAR SERVIS BELUM SELESAI ===")
+    print(tabulate(
+        tabel,
+        headers=["ID", "Member", "Alat", "Teknisi", "Status", "Tgl Masuk"],
+        tablefmt="grid"
+    ))
+
+    return rows
+
 def input_servis(conn, cur, pegawai):
     print("\n=== INPUT SERVIS BARU ===")
 
@@ -1843,7 +1888,13 @@ def input_servis(conn, cur, pegawai):
 def update_status_servis(conn, cur):
     print("\n=== UPDATE STATUS SERVIS ===")
 
-    servis_id = input_int("Masukkan ID Servis: ")
+    # Tampilkan dahulu daftar servis yang bisa diupdate
+    rows = list_servis_belum_selesai(cur)
+    if not rows:
+        return
+
+    # Input ID servis
+    servis_id = input_int("\nMasukkan ID Servis yang akan diupdate: ")
     if not servis_id:
         print("ID tidak valid.")
         return
@@ -1860,7 +1911,7 @@ def update_status_servis(conn, cur):
 
     # PROSES → SELESAI
     if status == "Proses":
-        print("Status saat ini: PROSES")
+        print("\nStatus saat ini: PROSES")
         print("Perubahan → SELESAI")
 
         biaya = input_int("Masukkan biaya servis: ")
@@ -1877,11 +1928,11 @@ def update_status_servis(conn, cur):
         """, (biaya, servis_id))
 
         conn.commit()
-        print("Status diubah menjadi SELESAI + biaya tersimpan.")
+        print("Status diubah menjadi SELESAI.")
 
     # SELESAI → DIAMBIL
     elif status == "Selesai":
-        print("Status saat ini: SELESAI")
+        print("\nStatus saat ini: SELESAI")
         print("Perubahan → DIAMBIL")
 
         cur.execute("""
@@ -1893,7 +1944,6 @@ def update_status_servis(conn, cur):
         conn.commit()
         print("Servis ditandai sebagai DIAMBIL.")
 
-    # DIAMBIL → tidak bisa diubah
     else:
         print("Servis sudah DIAMBIL dan tidak dapat diubah lagi.")
 
