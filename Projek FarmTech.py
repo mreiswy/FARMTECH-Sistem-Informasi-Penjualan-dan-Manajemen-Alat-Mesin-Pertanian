@@ -34,10 +34,10 @@ def clear_screen():
 # Koneksi DB
 # -------------------------
 DB_HOST = "localhost"
-DB_NAME = "FarmTechFix"
+DB_NAME = "NamaDB"
 DB_USER = "postgres"
-DB_PASS = "190727"
-DB_PORT = 5432
+DB_PASS = "PWDB"
+DB_PORT = 5432 --Default
 
 def connect_db():
     try:
