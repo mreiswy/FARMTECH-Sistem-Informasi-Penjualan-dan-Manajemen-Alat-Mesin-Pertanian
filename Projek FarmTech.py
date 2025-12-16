@@ -1,6 +1,5 @@
 import sys
 from datetime import datetime, date
-from datetime import timedelta
 from getpass import getpass
 import psycopg2
 import os
@@ -169,7 +168,6 @@ def tambah_owner(conn, cur):
         conn.rollback()
         print("Gagal menambah akun owner:", e)
 
-
 def ubah_owner(conn, cur):
     """
     Ubah akun owner:
@@ -330,7 +328,7 @@ def tampilkan_daftar_admin(cur):
         return []
     print(tabulate(rows, headers=["ID","Nama","Username","No HP","Alamat"], tablefmt="grid"))
     return rows
-
+ 
 def tambah_admin(conn, cur):
     """
     Owner menambah admin:
@@ -1514,8 +1512,6 @@ def increment_member_tx(conn, cur, member_id):
     cur.execute("UPDATE member SET total_transaksi = total_transaksi + 1 WHERE member_id = %s", (member_id,))
     conn.commit()
 
-
-
 # -------------------------
 # Penjualan
 # -------------------------
@@ -2115,6 +2111,7 @@ def laporan_barang_tidak_laku(cur):
             terakhir_terjual = EXCLUDED.terakhir_terjual,
             diskon_otomatis = EXCLUDED.diskon_otomatis;
     """)
+
 
     # ======================================================
     # TAMPILKAN LAPORAN
